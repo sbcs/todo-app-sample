@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TODO List</title>
+
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        margin: 0px 20px;
+      }
+
+      button {
+        cursor: pointer;
+
+        padding: 4px 8px;
+        border: 1px solid black;
+      }
+
+      input {
+        padding: 4px 8px;
+        border: 1px solid black;
+        outline: none;
+      }
+
+      #add-item-form {
+        display: flex;
+        gap: 4px;
+      }
+
+      #new-item-text {
+        width: 100%;
+      }
+
+      .content {
+        width: 800px;
+      }
+
+      #items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 20px;
+      }
+
+      .item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid black;
+        padding: 4px 6px;
+
+        p {
+          margin: 0px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content">
+      <h1>TODO List</h1>
+
+      <form id="add-item-form">
+        <input type="text" id="new-item-text" placeholder="New item" />
+        <button type="submit">Add</button>
+      </form>
+
+      <div id="items">
+        <p id="items-description">Loading...</p>
+        <template id="item-template">
+          <div class="item">
+            <p class="item-title"></p>
+            <button>Done!</button>
+          </div>
+        </template>
+      </div>
+
+      <script>
+        const itemsContainer = document.getElementById("items");
+        const itemTemplate = document.getElementById("item-template");
+        const itemDescription = document.getElementById("items-description");
+
+        async function fetchItems() {
+          const response = await fetch("/todo");
+
+          // show a message if there was an error fetching items
+          if (!response.ok) {
+            itemDescription.style.display = "block";
+            itemDescription.textContent =
+              "Error fetching items: " + response.statusText;
+            return;
+          }
+          const todos = await response.json();
+
+          // clear out existing items before repopulating
+          itemsContainer.querySelectorAll(".item").forEach((el) => el.remove());
+
+          // if there are no todos, show a message, else hide it
+          if (todos.length === 0) {
+            itemDescription.style.display = "block";
+            itemDescription.textContent = "No items found.";
+            return;
+          } else {
+            itemDescription.style.display = "none";
+          }
+
+          // go over every todo and stamp out a template for it
+          todos.forEach((todo) => {
+            const item = itemTemplate.content.cloneNode(true);
+            item.querySelector(".item-title").textContent = todo.task;
+            itemsContainer.appendChild(item);
+
+            // when the done button is clicked, delete the item
+            const doneButton =
+              itemsContainer.lastElementChild.querySelector("button");
+            doneButton.addEventListener("click", async () => {
+              await fetch("/todo/" + todo.id, { method: "DELETE" });
+              console.log("deleted", todo.id);
+              await fetchItems();
+            });
+          });
+        }
+
+        const addItemForm = document.getElementById("add-item-form");
+        const itemTextInput = document.getElementById("new-item-text");
+
+        async function handleCreate(event) {
+          event.preventDefault();
+
+          // reset input if not empty
+          const newItemText = itemTextInput.value;
+          if (newItemText.trim() === "") {
+            return;
+          }
+          itemTextInput.value = "";
+
+          // create item and invalidate ui
+          await fetch("/todo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ task: newItemText }),
+          });
+          await fetchItems();
+        }
+        addItemForm.addEventListener("submit", handleCreate);
+
+        // fetch items on load and refetch on window focus
+        fetchItems();
+        window.addEventListener("focus", fetchItems);
+      </script>
+    </div>
+  </body>
+</html>

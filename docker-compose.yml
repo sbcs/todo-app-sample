@@ -1,0 +1,11 @@
+# A docker-compose.yml file to run a Redis container for the todo app
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - data:/data
+volumes:
+  data:
